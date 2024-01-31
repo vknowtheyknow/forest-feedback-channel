@@ -115,13 +115,16 @@ def summit_lora_status(img_id):
 async def my_main():
     SOURCE_DIR = './image_buffer/segmented/'
     EXPORTED_DIR = './image_buffer/exported/'
+    cam_mac = b''
+    cam_mac += for i in (config.CAM_MAC_ADDRESS).split(':') 
+    print(f'cam_mac is {cam_mac}')
     '''
     if 'boardstatus' in sys.modules:   # Check if "rand_gen" is cached
         sys.modules.pop('boardstatus')  # If yes, remove it
     import boardstatus
     '''
     if not os.path.isdir(f'./lora_receiver/rx_buffer/boardstatus'):
-                    os.mkdir(f'./lora_receiver/rx_buffer/boardstatus')
+        os.mkdir(f'./lora_receiver/rx_buffer/boardstatus')
     for b in range(3):
         with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
             
@@ -136,12 +139,12 @@ async def my_main():
     b_active = [1,1,1]
     ts = time.time()
     b_ltime = [ts,ts,ts]
-    sp_list = service_packet.generate_packet()
-    print(f'sp_list is {sp_list}')
+    #sp_list = service_packet.generate_packet()
+    #print(f'sp_list is {sp_list}')
     #old context
     #await post_tx_status()
     for img_id in img_list:
-        cam_id = b'\x00\n\x01\x00\x00\x02'
+        
         await lora_array.loras[0].lora_tx(cam_id,0,1)
         print(img_id)
         if not os.path.isdir(f'{SOURCE_DIR}{img_id}'):
@@ -175,7 +178,7 @@ async def my_main():
             print(b_ltime[2])
             b_active_num = b_active[0]+b_active[1]+b_active[2]
             ###########why we have
-            #seg_list.extend(b_active_num*[False])
+            seg_list.extend(b_active_num*[False])
             for seg_ind in range(0, last_seg+1, b_active_num):
                 if b_active[0]==1:
                     payload_list_0 = payload_prep(img_id, seg_list[seg_ind])
@@ -213,7 +216,7 @@ async def my_main():
             #boardstatus.b_lsend = time.time()
         if len(seg_list) == 0:
             
-            await lora_array.loras[0].lora_tx(b'',1,0)
+            await lora_array.loras[0].lora_tx(b'',0,1)
             os.rmdir(SOURCE_DIR + img_id)
             
     await post_tx_status()

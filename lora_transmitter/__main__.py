@@ -14,15 +14,7 @@ PACKET_SIZE = config.PACKET_SIZE
 SOURCE_DIR = './image_buffer/segmented/'
 EXPORTED_DIR = './image_buffer/exported/'
 
-async def payload_enqueue_wrapper(index, payload_list):
-    '''
-    if 'boardstatus' in sys.modules:   # Check if "rand_gen" is cached
-        sys.modules.pop('boardstatus')  # If yes, remove it
-    import boardstatus
-    b_active = boardstatus.b_active
-    '''
-    f  = open(f'./lora_receiver/rx_buffer/boardstatus/{index}.txt', "r")
-    active = f.read(1).split('_')[0]
+async def payload_enqueue_wrapper(index, payload_list, active):
     print(f'this is from payload wrapper {active}')
     if active:
         await payload_enqueue(index, payload_list)
@@ -57,19 +49,9 @@ def payload_prep(file_id, seg_name):
         payload = header + subheader + ori_b[:PACKET_SIZE]
         #b'\x00\n\x01\x00\x00\x02'+binary_img
         payload_list.append(payload)
-        '''
-        if not os.path.isdir(f'./lora_receiver/rx_buffer/{file_id}'):
-            os.mkdir(f'./lora_receiver/rx_buffer/{file_id}')
-        if not os.path.isdir(f'./lora_receiver/rx_buffer/{file_id}/{x}_{y}'):
-            os.mkdir(f'./lora_receiver/rx_buffer/{file_id}/{x}_{y}')
-        if not os.path.isdir(f'./lora_receiver/rx_buffer/{file_id}/{x}_{y}/{sub_no}'):
-            os.mkdir(f'./lora_receiver/rx_buffer/{file_id}/{x}_{y}/{sub_no}')
-        
-        '''
         sub_no += 1
         ori_b = ori_b[PACKET_SIZE:]
         #print(payload_list)
-        #print('////////')
     return payload_list
 
 def print_header(payload):
@@ -103,7 +85,7 @@ async def post_tx_status():
             payload_enqueue(0, [service_payload]),
             payload_enqueue(1, [service_payload]),
             payload_enqueue(2, [service_payload]),
-            #payload_enqueue(3, [service_payload])
+            
         )
 
 def summit_lora_status(img_id):
@@ -115,8 +97,8 @@ def summit_lora_status(img_id):
 async def my_main():
     SOURCE_DIR = './image_buffer/segmented/'
     EXPORTED_DIR = './image_buffer/exported/'
-    cam_mac = b''
-    cam_mac += for i in (config.CAM_MAC_ADDRESS).split(':') 
+    CAM_MAC = '00:62:4E:60:15:A1'
+    cam_mac = bytes.fromhex(CAM_MAC.replace(':', ''))
     print(f'cam_mac is {cam_mac}')
     '''
     if 'boardstatus' in sys.modules:   # Check if "rand_gen" is cached
@@ -127,7 +109,6 @@ async def my_main():
         os.mkdir(f'./lora_receiver/rx_buffer/boardstatus')
     for b in range(3):
         with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
-            
             f.write(f'1_{time.time()}')
         
     
@@ -145,7 +126,7 @@ async def my_main():
     #await post_tx_status()
     for img_id in img_list:
         
-        await lora_array.loras[0].lora_tx(cam_id,0,1)
+        await lora_array.loras[0].lora_tx(cam_mac,1,0)
         print(img_id)
         if not os.path.isdir(f'{SOURCE_DIR}{img_id}'):
             continue
@@ -158,12 +139,6 @@ async def my_main():
         #time.start()
         while last_seg>0:
             ts = time.time()
-            #for seg_ind in range(0, last_seg+1, 4):
-            '''
-            if 'boardstatus' in sys.modules:   # Check if "rand_gen" is cached
-                sys.modules.pop('boardstatus')  # If yes, remove it
-            import boardstatus
-            '''
             for b in range(3):
                 with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "r") as f:
                     i = f.read().split("_")
@@ -177,45 +152,42 @@ async def my_main():
             print(b_ltime[1])
             print(b_ltime[2])
             b_active_num = b_active[0]+b_active[1]+b_active[2]
+            seg_ind = 0
             ###########why we have
-            seg_list.extend(b_active_num*[False])
+            seg_list.extend(2*[False])
             for seg_ind in range(0, last_seg+1, b_active_num):
+            while seg_ind <= last_seg:
+                for b in range(3):
+                    with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "r") as f:
+                        i = f.read().split("_")
+                        b_active[b] = int(i[0])
+                        b_ltime[b] = float(i[1])
+                    if ts - b_ltime[b] > 60:
+                        with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
+                            f.write(f'0_{b_ltime[b]}')
                 if b_active[0]==1:
                     payload_list_0 = payload_prep(img_id, seg_list[seg_ind])
+                    seg_ind++
                 if b_active[1]==1:
                     payload_list_1 = payload_prep(img_id, seg_list[seg_ind+1])
+                    seg_ind++
                 if b_active[2]==1:
                     payload_list_2 = payload_prep(img_id, seg_list[seg_ind+2])
-                #payload_list_3 = payload_prep(img_id, seg_list[seg_ind+3])
+                    seg_ind++
+                
                 await asyncio.gather(
-                    *[payload_enqueue_wrapper(0, payload_list_0),
-                    payload_enqueue_wrapper(1, payload_list_1),
-                    payload_enqueue_wrapper(2, payload_list_2)]
+                    *[payload_enqueue_wrapper(0, payload_list_0,b_active[0]),
+                    payload_enqueue_wrapper(1, payload_list_1,b_active[1]),
+                    payload_enqueue_wrapper(2, payload_list_2,b_active[2])]
                 )
+                
                 summit_lora_status(img_id)
             
-            #for i in range(4):
-            #await asyncio.sleep(3)
-            '''
-            for i in range(3):
-                #x, y = [int(i) for i in seg_list[seg_ind+i].split('.')[0].split('_')]
-                
-                
-                f = open(f'./lora_receiver/rx_buffer/{img_id}/{x}_{y}/packet_recieved_success.txt')
-                orb = f.read()
-                print('orb:',orb)
-                f.close()
-                
-                #this is what we should keep
-                if seg_list[seg_ind+i]:
-                    os.rename(f'{SOURCE_DIR}{img_id}/{seg_list[seg_ind+i]}', f'{EXPORTED_DIR}{img_id}/{seg_list[seg_ind+i]}')
-            '''
             seg_list = os.listdir(SOURCE_DIR + img_id)
             last_seg = len(seg_list)
             print(f'this is file that send unsuccessfully ,amount:{last_seg} which are {seg_list}')
-            #boardstatus.b_lsend = time.time()
-        if len(seg_list) == 0:
             
+        if len(seg_list) == 0:
             await lora_array.loras[0].lora_tx(b'',0,1)
             os.rmdir(SOURCE_DIR + img_id)
             

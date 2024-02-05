@@ -154,7 +154,7 @@ async def my_main():
             b_active_num = b_active[0]+b_active[1]+b_active[2]
             seg_ind = 0
             ###########why we have
-            seg_list.extend(2*[False])
+            seg_list.extend(3*[False])
             #for seg_ind in range(0, last_seg+1, b_active_num):
             while seg_ind <= last_seg:
                 for b in range(3):
@@ -191,9 +191,6 @@ async def my_main():
             
         if len(seg_list) == 0:
             await lora_array.loras[0].lora_tx(b'',0,1)
-            lora_array.loras[0].feedback = False
-            lora_array.loras[1].feedback = False
-            lora_array.loras[2].feedback = False
             os.rmdir(SOURCE_DIR + img_id)
             
     await post_tx_status()

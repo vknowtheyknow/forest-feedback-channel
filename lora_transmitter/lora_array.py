@@ -94,7 +94,7 @@ class mylora(LoRa):
         super(mylora, self).__init__(board,verbose=verbose)
         self.board = board
         self.set_mode(MODE.SLEEP)
-        self.feedback = False
+        self.feedback = True
         if board == Board3:
             self.set_dio_mapping([0] * 6)
             self.rx_avail = False
@@ -140,7 +140,7 @@ class mylora(LoRa):
 
     async def start(self):
         send_packet = []  
-        CAM_MAC = '00:62:4E:60:15:A1'
+        CAM_MAC = '00:62:4E:60:15:A2'
         cam_mac = bytes.fromhex(CAM_MAC.replace(':', ''))   
         print(f"[{self.name}] START")
         #feedback_channel = False
@@ -152,24 +152,31 @@ class mylora(LoRa):
         if board == Board3:
             self.reset_ptr_rx()
             self.set_mode(MODE.RXCONT)
+            
             while True:
                 
                 while not self.rx_avail:
                     await asyncio.sleep(0.001)
-                print('-'*25,'feedback','-'*25, time.ctime())
+                print('='*25,'feedback','='*25, time.ctime())
                 self.rx_avail = False
                 pkt_rssi,rssi = self.get_pkt_rssi_value(), self.get_rssi_value()
                 payload = self.read_payload(nocheck=True)  # mean "do not check CRC!"
                 print(f'payload is {payload}')
+                
                 #first connection;prepare before send
-                if list(payload[2:3])[0] == 1:
-                    print(bytes(payload[4:]))
-                    print(cam_mac)
-                    if bytes(payload[4:]) == cam_mac:
-                        loras[0].feedback = True
-                        loras[1].feedback = True
-                        loras[2].feedback = True 
+                cam_mac_pack = list(payload[2:3])[0]
+                
+                if cam_mac_pack == 1:
+                    print(f'cam that rx recieve is is {payload[4:]}')
+                    if bytes(payload[4:]) != cam_mac:
+                        loras[0].feedback = False
+                        loras[1].feedback = False
+                        loras[2].feedback = False
                         print(loras[0].feedback,loras[1].feedback,loras[2].feedback)
+                        print('we must wait other to send')
+                    else:
+                        print("It's our turn!!! we are sending")
+                
                 if list(payload[3:4])[0] == 1:
                         loras[0].feedback = False
                         loras[1].feedback = False
@@ -181,7 +188,7 @@ class mylora(LoRa):
                         x = int(list(payload[6:7])[0])
                         y = int(list(payload[7:8])[0])
                         board_no = list(payload[8:9])
-                        
+                        print('img_id',img_id,'x_y',x,y,board_no)
                         n_time = time.time()
                         b = board_no[0]
                         
@@ -193,13 +200,12 @@ class mylora(LoRa):
                         #ได้ packet มาแล้วถ้ามีไฟล์ x_y ใน exported 
                         pkt_error = not self.rx_is_good()
                         self.clear_irq_flags(RxDone=1,PayloadCrcError=1)
-                        '''
-                        if os.path.isdir(f'./lora_receiver/rx_buffer/{img_id}/{x}_{y}/{sub_no}'):
-                            os.rmdir(f'./lora_receiver/rx_buffer/{img_id}/{x}_{y}/{sub_no}')
-                        '''
-                        if os.path.isdir(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg'):
-                            os.rename(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/lora-multi-ch-master/image_buffer/exported/{img_id}/{x}_{y}.jpg')
-                            print(f'renamed /home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
+                       
+                        if os.path.isdir(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}'):
+                            os.rename(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/forest-feedback-channel/image_buffer/exported/{img_id}/{x}_{y}.jpg')
+                            print(f'renamed /home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
+                        else:
+                            print('not found file')
                         if pkt_error:
                             print(f'[{self.name}] CRC ERROR (no data written)')
                             print(self.get_irq_flags())
@@ -220,7 +226,7 @@ class mylora(LoRa):
                             self.name, len(payload), payload[1], payload[0]))
                             #print(payload)
                             print("Pkt RSSI: {} RSSI: {}".format(pkt_rssi,rssi))
-                            
+                           
 
                 
         else:
@@ -245,7 +251,7 @@ class mylora(LoRa):
         await self.queue_tx.put(payload)
         #payload=0_0_ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefgh
 
-    async def lora_tx(self, payload, fin_send, ask_send, byte_payload = (__name__!='__main__')):
+    async def lora_tx(self, payload, ask_send, fin_send, byte_payload = (__name__!='__main__')):
         # wait until ready for send(tx)
         while not self.tx_avail:
             await asyncio.sleep(0.001)
@@ -256,10 +262,13 @@ class mylora(LoRa):
             self.write_payload([
                 0xff, # receiver (0xff for broadcast)
                 0x80, # sender
-                0x01,
                 0x00,
+                0x01,
                 
             ] + (list(payload) if byte_payload else to_ascii(payload)))
+            loras[0].feedback = False
+            loras[1].feedback = False
+            loras[2].feedback = False
         else:
             self.write_payload([
                 0xff, # receiver (0xff for broadcast)

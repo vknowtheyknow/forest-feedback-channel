@@ -154,9 +154,9 @@ async def my_main():
             b_active_num = b_active[0]+b_active[1]+b_active[2]
             seg_ind = 0
             ###########why we have
-            seg_list.extend(3*[False])
-            #for seg_ind in range(0, last_seg+1, b_active_num):
-            while seg_ind <= last_seg:
+            seg_list.extend(5*[False])
+
+            while seg_ind < last_seg:
                 for b in range(3):
                     with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "r") as f:
                         i = f.read().split("_")

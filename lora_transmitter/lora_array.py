@@ -288,18 +288,7 @@ class mylora(LoRa):
         #loras[node].reset_ptr_rx()
         #loras[node].set_mode(MODE.RXCONT)
         print(f"[{self.name}] Sent")
-        img_id = list(payload[0:2])
-        img_id = img_id[0]*256 + img_id[1]
-        x = int(list(payload[2:3])[0])
-        y = int(list(payload[3:4])[0])
-        sub_no = list(payload[4:6])
-        sub_no = sub_no[0]*256 + sub_no[1]
-        if not os.path.isdir(f'./lora_receiver/rx_buffer/{img_id}'):
-            os.mkdir(f'./lora_receiver/rx_buffer/{img_id}')
-        if not os.path.isdir(f'./lora_receiver/rx_buffer/{img_id}/{x}_{y}'):
-            os.mkdir(f'./lora_receiver/rx_buffer/{img_id}/{x}_{y}')
-        if not os.path.isdir(f'./lora_receiver/rx_buffer/{img_id}/{x}_{y}/{sub_no}'):
-            os.mkdir(f'./lora_receiver/rx_buffer/{img_id}/{x}_{y}/{sub_no}')
+       
         print('-'*50, time.ctime())
         await asyncio.sleep(0.1)
 

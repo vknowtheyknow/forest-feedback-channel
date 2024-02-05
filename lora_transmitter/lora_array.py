@@ -163,10 +163,13 @@ class mylora(LoRa):
                 print(f'payload is {payload}')
                 #first connection;prepare before send
                 if list(payload[2:3])[0] == 1:
-                    if list(payload[4:]) == cam_mac:
+                    print(bytes(payload[4:]))
+                    print(cam_mac)
+                    if bytes(payload[4:]) == cam_mac:
                         loras[0].feedback = True
                         loras[1].feedback = True
                         loras[2].feedback = True 
+                        print(loras[0].feedback,loras[1].feedback,loras[2].feedback)
                 if list(payload[3:4])[0] == 1:
                         loras[0].feedback = False
                         loras[1].feedback = False
@@ -223,6 +226,7 @@ class mylora(LoRa):
         else:
             while True:
                 while not self.feedback:
+                    #print(self.feedback)
                     await asyncio.sleep(0.001)
                 payload = await self.queue_tx.get()
                 await self.lora_tx(payload,0,0)

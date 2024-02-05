@@ -155,25 +155,27 @@ async def my_main():
             seg_ind = 0
             ###########why we have
             seg_list.extend(2*[False])
-            for seg_ind in range(0, last_seg+1, b_active_num):
+            #for seg_ind in range(0, last_seg+1, b_active_num):
             while seg_ind <= last_seg:
                 for b in range(3):
                     with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "r") as f:
                         i = f.read().split("_")
                         b_active[b] = int(i[0])
                         b_ltime[b] = float(i[1])
+                        print(b_active[b])
+                        print(b_ltime[b])
                     if ts - b_ltime[b] > 60:
                         with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
                             f.write(f'0_{b_ltime[b]}')
                 if b_active[0]==1:
                     payload_list_0 = payload_prep(img_id, seg_list[seg_ind])
-                    seg_ind++
+                    seg_ind +=1
                 if b_active[1]==1:
                     payload_list_1 = payload_prep(img_id, seg_list[seg_ind+1])
-                    seg_ind++
+                    seg_ind +=1
                 if b_active[2]==1:
                     payload_list_2 = payload_prep(img_id, seg_list[seg_ind+2])
-                    seg_ind++
+                    seg_ind +=1
                 
                 await asyncio.gather(
                     *[payload_enqueue_wrapper(0, payload_list_0,b_active[0]),
@@ -189,6 +191,9 @@ async def my_main():
             
         if len(seg_list) == 0:
             await lora_array.loras[0].lora_tx(b'',0,1)
+            lora_array.loras[0].feedback = False
+            lora_array.loras[1].feedback = False
+            lora_array.loras[2].feedback = False
             os.rmdir(SOURCE_DIR + img_id)
             
     await post_tx_status()

@@ -148,9 +148,9 @@ async def my_main():
                     with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
                         f.write(f'0_{b_ltime[b]}')
                     
-            print(b_ltime[0])
-            print(b_ltime[1])
-            print(b_ltime[2])
+            print(ts-b_ltime[0])
+            print(ts-b_ltime[1])
+            print(ts-b_ltime[2])
             b_active_num = b_active[0]+b_active[1]+b_active[2]
             seg_ind = 0
             ###########why we have
@@ -158,15 +158,13 @@ async def my_main():
 
             while seg_ind < last_seg:
                 for b in range(3):
-                    with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "r") as f:
-                        i = f.read().split("_")
-                        b_active[b] = int(i[0])
-                        b_ltime[b] = float(i[1])
-                        print(b_active[b])
-                        print(b_ltime[b])
-                    if ts - b_ltime[b] > 60:
+                    if ts - b_ltime[b] < 60:
+                        with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
+                            f.write(f'1_{b_ltime[b]}')
+                    else:
                         with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
                             f.write(f'0_{b_ltime[b]}')
+                    
                 if b_active[0]==1:
                     payload_list_0 = payload_prep(img_id, seg_list[seg_ind])
                     seg_ind +=1
@@ -184,6 +182,12 @@ async def my_main():
                 )
                 
                 summit_lora_status(img_id)
+                ts = time.time()
+                for b in range(3):
+                    with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "r") as f:
+                        i = f.read().split("_")
+                        b_active[b] = int(i[0])
+                        b_ltime[b] = float(i[1])
             
             seg_list = os.listdir(SOURCE_DIR + img_id)
             last_seg = len(seg_list)

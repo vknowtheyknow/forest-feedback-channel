@@ -140,7 +140,7 @@ class mylora(LoRa):
 
     async def start(self):
         send_packet = []  
-        CAM_MAC = '00:62:4E:60:15:A2'
+        CAM_MAC = '00:62:4E:60:15:A1'
         cam_mac = bytes.fromhex(CAM_MAC.replace(':', ''))   
         print(f"[{self.name}] START")
         #feedback_channel = False
@@ -164,9 +164,11 @@ class mylora(LoRa):
                 print(f'payload is {payload}')
                 
                 #first connection;prepare before send
+                '''
                 cam_mac_pack = list(payload[2:3])[0]
                 
                 if cam_mac_pack == 1:
+                    print(f'our cam_mac is {list(cam_mac)}')
                     print(f'cam that rx recieve is is {payload[4:]}')
                     if bytes(payload[4:]) != cam_mac:
                         loras[0].feedback = False
@@ -175,59 +177,72 @@ class mylora(LoRa):
                         print(loras[0].feedback,loras[1].feedback,loras[2].feedback)
                         print('we must wait other to send')
                     else:
+                        loras[0].feedback = True
+                        loras[1].feedback = True
+                        loras[2].feedback = True
                         print("It's our turn!!! we are sending")
                 
-                if list(payload[3:4])[0] == 1:
+                elif list(payload[3:4])[0] == 1:
+                    if bytes(payload[4:]) == cam_mac:
                         loras[0].feedback = False
                         loras[1].feedback = False
                         loras[2].feedback = False
-                if loras[0].feedback and loras[1].feedback and loras[2].feedback:
-                    if list(payload[2:3])[0] == 0 and list(payload[3:4])[0] == 0:
-                        img_id = list(payload[4:6])
-                        img_id = img_id[0]*256 + img_id[1]
-                        x = int(list(payload[6:7])[0])
-                        y = int(list(payload[7:8])[0])
-                        board_no = list(payload[8:9])
-                        print('img_id',img_id,'x_y',x,y,board_no)
-                        n_time = time.time()
-                        b = board_no[0]
-                        
-                        if not os.path.isdir(f'./lora_receiver/rx_buffer/boardstatus'):
-                            os.mkdir(f'./lora_receiver/rx_buffer/boardstatus/')
-                        f  = open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w")
-                        f.write(f"1_{time.time()}")
-                        f.close()
-                        #ได้ packet มาแล้วถ้ามีไฟล์ x_y ใน exported 
-                        pkt_error = not self.rx_is_good()
-                        self.clear_irq_flags(RxDone=1,PayloadCrcError=1)
-                       
-                        if os.path.isdir(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}'):
-                            os.rename(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/forest-feedback-channel/image_buffer/exported/{img_id}/{x}_{y}.jpg')
-                            print(f'renamed /home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
-                        else:
-                            print('not found file')
-                        if pkt_error:
-                            print(f'[{self.name}] CRC ERROR (no data written)')
-                            print(self.get_irq_flags())
-                            print("Pkt RSSI: {} RSSI: {}".format(pkt_rssi,rssi))
-                            print("GOt",img_id,x,y,board_no)
-                            try:
-                                if not os.path.isdir(f'./lora_receiver/error_buffer'):
-                                    os.mkdir(f'./lora_receiver/error_buffer')
-                                if payload:
-                                    ts = int(time.time()*10000000)
-                                    with open(f'./lora_receiver/error_buffer/{self.name}.{ts}','wb') as f:
-                                        f.write(bytearray(payload))
-                            except Exception as e:
-                                print("*** Exception2 {}".format(str(e)))
-                            continue
-                        else:
-                            print("[{}] Receive: {} bytes (with header) from 0x{:02X} to 0x{:02X}".format(
-                            self.name, len(payload), payload[1], payload[0]))
-                            #print(payload)
-                            print("Pkt RSSI: {} RSSI: {}".format(pkt_rssi,rssi))
-                           
-
+                '''
+                '''
+                #if loras[0].feedback or loras[1].feedback or loras[2].feedback:
+                #elif list(payload[2:3])[0] == 0 and list(payload[3:4])[0] == 0:
+                img_id = list(payload[4:6])
+                img_id = img_id[0]*256 + img_id[1]
+                x = int(list(payload[6:7])[0])
+                y = int(list(payload[7:8])[0])
+                board_no = list(payload[8:9])
+                print('img_id',img_id,'x_y',x,y,board_no)
+                n_time = time.time()
+                b = board_no[0]
+                
+                if not os.path.isdir(f'./lora_receiver/rx_buffer/boardstatus'):
+                    os.mkdir(f'./lora_receiver/rx_buffer/boardstatus/')
+                f  = open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w")
+                f.write(f"1_{time.time()}")
+                f.close()
+                #ได้ packet มาแล้วถ้ามีไฟล์ x_y ใน exported 
+                pkt_error = not self.rx_is_good()
+                self.clear_irq_flags(RxDone=1,PayloadCrcError=1)
+               
+                if os.path.isdir(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}'):
+                    os.rename(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/lora-multi-ch-master/image_buffer/exported/{img_id}/{x}_{y}.jpg')
+                    print(f'renamed /home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
+                else:
+                    print('not found file')
+                '''
+                '''
+                if os.path.isdir(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}'):
+                    os.rename(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/forest-feedback-channel/image_buffer/exported/{img_id}/{x}_{y}.jpg')
+                    print(f'renamed /home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
+                '''
+                '''
+                if pkt_error:
+                    print(f'[{self.name}] CRC ERROR (no data written)')
+                    print(self.get_irq_flags())
+                    print("Pkt RSSI: {} RSSI: {}".format(pkt_rssi,rssi))
+                    print("GOt",img_id,x,y,board_no)
+                    try:
+                        if not os.path.isdir(f'./lora_receiver/error_buffer'):
+                            os.mkdir(f'./lora_receiver/error_buffer')
+                        if payload:
+                            ts = int(time.time()*10000000)
+                            with open(f'./lora_receiver/error_buffer/{self.name}.{ts}','wb') as f:
+                                f.write(bytearray(payload))
+                    except Exception as e:
+                        print("*** Exception2 {}".format(str(e)))
+                    continue
+                else:
+                    print("[{}] Receive: {} bytes (with header) from 0x{:02X} to 0x{:02X}".format(
+                    self.name, len(payload), payload[1], payload[0]))
+                    #print(payload)
+                    print("Pkt RSSI: {} RSSI: {}".format(pkt_rssi,rssi))
+                   
+                '''
                 
         else:
             while True:
@@ -269,6 +284,15 @@ class mylora(LoRa):
             loras[0].feedback = False
             loras[1].feedback = False
             loras[2].feedback = False
+        elif ask_send:
+            self.write_payload([
+                0xff, # receiver (0xff for broadcast)
+                0x80, # sender
+                0x01,
+                0x00,
+                
+            ] + (list(payload) if byte_payload else to_ascii(payload)))
+            
         else:
             self.write_payload([
                 0xff, # receiver (0xff for broadcast)

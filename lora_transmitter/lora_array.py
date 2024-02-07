@@ -94,7 +94,7 @@ class mylora(LoRa):
         super(mylora, self).__init__(board,verbose=verbose)
         self.board = board
         self.set_mode(MODE.SLEEP)
-        self.feedback = True
+        self.feedback = False
         if board == Board3:
             self.set_dio_mapping([0] * 6)
             self.rx_avail = False
@@ -143,6 +143,7 @@ class mylora(LoRa):
         CAM_MAC = '00:62:4E:60:15:A1'
         cam_mac = bytes.fromhex(CAM_MAC.replace(':', ''))   
         print(f"[{self.name}] START")
+        o_b = -1
         #feedback_channel = False
         '''
         t = Timer(300.0, non_active)
@@ -152,6 +153,7 @@ class mylora(LoRa):
         if board == Board3:
             self.reset_ptr_rx()
             self.set_mode(MODE.RXCONT)
+            r_pack=[]
             
             while True:
                 
@@ -162,9 +164,10 @@ class mylora(LoRa):
                 pkt_rssi,rssi = self.get_pkt_rssi_value(), self.get_rssi_value()
                 payload = self.read_payload(nocheck=True)  # mean "do not check CRC!"
                 print(f'payload is {payload}')
+                self.clear_irq_flags(RxDone=1,PayloadCrcError=1)
                 
                 #first connection;prepare before send
-                '''
+                
                 cam_mac_pack = list(payload[2:3])[0]
                 
                 if cam_mac_pack == 1:
@@ -181,68 +184,92 @@ class mylora(LoRa):
                         loras[1].feedback = True
                         loras[2].feedback = True
                         print("It's our turn!!! we are sending")
+                        o_x = -99
+                        o_y = -99
                 
                 elif list(payload[3:4])[0] == 1:
                     if bytes(payload[4:]) == cam_mac:
                         loras[0].feedback = False
                         loras[1].feedback = False
                         loras[2].feedback = False
-                '''
-                '''
-                #if loras[0].feedback or loras[1].feedback or loras[2].feedback:
-                #elif list(payload[2:3])[0] == 0 and list(payload[3:4])[0] == 0:
-                img_id = list(payload[4:6])
-                img_id = img_id[0]*256 + img_id[1]
-                x = int(list(payload[6:7])[0])
-                y = int(list(payload[7:8])[0])
-                board_no = list(payload[8:9])
-                print('img_id',img_id,'x_y',x,y,board_no)
-                n_time = time.time()
-                b = board_no[0]
-                
-                if not os.path.isdir(f'./lora_receiver/rx_buffer/boardstatus'):
-                    os.mkdir(f'./lora_receiver/rx_buffer/boardstatus/')
-                f  = open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w")
-                f.write(f"1_{time.time()}")
-                f.close()
-                #ได้ packet มาแล้วถ้ามีไฟล์ x_y ใน exported 
-                pkt_error = not self.rx_is_good()
-                self.clear_irq_flags(RxDone=1,PayloadCrcError=1)
                
-                if os.path.isdir(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}'):
-                    os.rename(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/lora-multi-ch-master/image_buffer/exported/{img_id}/{x}_{y}.jpg')
-                    print(f'renamed /home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
-                else:
-                    print('not found file')
-                '''
-                '''
-                if os.path.isdir(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}'):
-                    os.rename(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/forest-feedback-channel/image_buffer/exported/{img_id}/{x}_{y}.jpg')
-                    print(f'renamed /home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
-                '''
-                '''
-                if pkt_error:
-                    print(f'[{self.name}] CRC ERROR (no data written)')
-                    print(self.get_irq_flags())
-                    print("Pkt RSSI: {} RSSI: {}".format(pkt_rssi,rssi))
-                    print("GOt",img_id,x,y,board_no)
-                    try:
-                        if not os.path.isdir(f'./lora_receiver/error_buffer'):
-                            os.mkdir(f'./lora_receiver/error_buffer')
-                        if payload:
-                            ts = int(time.time()*10000000)
-                            with open(f'./lora_receiver/error_buffer/{self.name}.{ts}','wb') as f:
-                                f.write(bytearray(payload))
-                    except Exception as e:
-                        print("*** Exception2 {}".format(str(e)))
-                    continue
-                else:
-                    print("[{}] Receive: {} bytes (with header) from 0x{:02X} to 0x{:02X}".format(
-                    self.name, len(payload), payload[1], payload[0]))
-                    #print(payload)
-                    print("Pkt RSSI: {} RSSI: {}".format(pkt_rssi,rssi))
-                   
-                '''
+                elif loras[0].feedback or loras[1].feedback or loras[2].feedback:
+                    if list(payload[2:3])[0] == 0 and list(payload[3:4])[0] == 0:
+                        img_id = list(payload[4:6])
+                        img_id = img_id[0]*256 + img_id[1]
+                        x = int(list(payload[6:7])[0])
+                        y = int(list(payload[7:8])[0])
+                        board_no = list(payload[8:9])
+                        r_pack.append(f'{x}_{y}')
+                        print('img_id',img_id,'x_y',x,y,board_no)
+                        print(r_pack)
+                        n_time = time.time()
+                        b = board_no[0]
+                        
+                        if not os.path.isdir(f'./lora_receiver/rx_buffer/boardstatus'):
+                            os.mkdir(f'./lora_receiver/rx_buffer/boardstatus/')
+                        f  = open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w")
+                        f.write(f"1_{time.time()}")
+                        f.close()
+                        #ได้ packet มาแล้วถ้ามีไฟล์ x_y ใน exported 
+                        pkt_error = not self.rx_is_good()
+                        self.clear_irq_flags(RxDone=1,PayloadCrcError=1)
+                        '''
+                        if os.path.isdir(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}'):
+                            os.rename(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/lora-multi-ch-master/image_buffer/exported/{img_id}/{x}_{y}.jpg')
+                            print(f'renamed /home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
+                        else:
+                            print('not found file')
+                        '''
+                        '''
+                        if o_x ==x and o_y ==y:
+                            if b == o_b+1:
+                                o_b=b
+                            else:
+                                print(f'{x_y} is missing')
+                        else:
+                            if o_x == -99:
+                                print(f'first packet')
+                                o_x=x
+                                o_y=y
+                            if os.path.isdir(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}'):
+                                os.rename(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{o_x}_{o_y}.jpg', f'/home/pi/Documents/forest-feedback-channel/image_buffer/exported/{img_id}/{o_x}_{o_y}.jpg')
+                                print(f'renamed /home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{o_x}_{o_y}.jpg')
+                                o_b=0
+                            else:
+                                print('not found file')
+                            o_x=x
+                            o_y=y
+                        '''
+                        
+                        if os.path.isdir(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}'):
+                            os.rename(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/forest-feedback-channel/image_buffer/exported/{img_id}/{x}_{y}.jpg')
+                            print(f'renamed /home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
+                                
+                        else:
+                            print('not found file')
+                        if pkt_error:
+                            print(f'[{self.name}] CRC ERROR (no data written)')
+                            print(self.get_irq_flags())
+                            print("Pkt RSSI: {} RSSI: {}".format(pkt_rssi,rssi))
+                            print("GOt",img_id,x,y,board_no)
+                            try:
+                                if not os.path.isdir(f'./lora_receiver/error_buffer'):
+                                    os.mkdir(f'./lora_receiver/error_buffer')
+                                if payload:
+                                    ts = int(time.time()*10000000)
+                                    with open(f'./lora_receiver/error_buffer/{self.name}.{ts}','wb') as f:
+                                        f.write(bytearray(payload))
+                            except Exception as e:
+                                print("*** Exception2 {}".format(str(e)))
+                            continue
+                        else:
+                            print("[{}] Receive: {} bytes (with header) from 0x{:02X} to 0x{:02X}".format(
+                            self.name, len(payload), payload[1], payload[0]))
+                            #print(payload)
+                            print("Pkt RSSI: {} RSSI: {}".format(pkt_rssi,rssi))
+                           
+                        
                 
         else:
             while True:

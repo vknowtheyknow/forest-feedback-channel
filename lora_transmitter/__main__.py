@@ -97,7 +97,7 @@ def summit_lora_status(img_id):
 async def my_main():
     SOURCE_DIR = './image_buffer/segmented/'
     EXPORTED_DIR = './image_buffer/exported/'
-    CAM_MAC = '00:62:4E:60:15:A1'
+    CAM_MAC = config.CAM_MAC_ADDRESS
     cam_mac = bytes.fromhex(CAM_MAC.replace(':', ''))
     print(f'cam_mac is {cam_mac}')
     '''

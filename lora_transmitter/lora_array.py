@@ -140,7 +140,7 @@ class mylora(LoRa):
 
     async def start(self):
         send_packet = []  
-        CAM_MAC = '00:62:4E:60:15:A1'
+        CAM_MAC = config.CAM_MAC_ADDRESS
         cam_mac = bytes.fromhex(CAM_MAC.replace(':', ''))   
         print(f"[{self.name}] START")
         o_b = -1
@@ -186,6 +186,9 @@ class mylora(LoRa):
                         print("It's our turn!!! we are sending")
                         o_x = -99
                         o_y = -99
+                        for b in range(3):
+                            with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
+                                f.write(f'1_{b_ltime[b]}')
                 
                 elif list(payload[3:4])[0] == 1:
                     if bytes(payload[4:]) == cam_mac:
@@ -245,9 +248,9 @@ class mylora(LoRa):
                         if os.path.isdir(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}'):
                             os.rename(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/forest-feedback-channel/image_buffer/exported/{img_id}/{x}_{y}.jpg')
                             print(f'renamed /home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
-                                
                         else:
                             print('not found file')
+                            
                         if pkt_error:
                             print(f'[{self.name}] CRC ERROR (no data written)')
                             print(self.get_irq_flags())

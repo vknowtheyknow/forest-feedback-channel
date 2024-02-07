@@ -27,7 +27,7 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 loop = asyncio.get_event_loop()
 
-
+CAM_MAC = config.CAM_MAC_ADDRESS
 
 control_channel = 0
 ###########################################################
@@ -140,7 +140,7 @@ class mylora(LoRa):
 
     async def start(self):
         send_packet = []  
-        CAM_MAC = config.CAM_MAC_ADDRESS
+        #CAM_MAC = config.CAM_MAC_ADDRESS
         cam_mac = bytes.fromhex(CAM_MAC.replace(':', ''))   
         print(f"[{self.name}] START")
         o_b = -1
@@ -188,7 +188,7 @@ class mylora(LoRa):
                         o_y = -99
                         for b in range(3):
                             with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
-                                f.write(f'1_{b_ltime[b]}')
+                                f.write(f'1_{time.time()}')
                 
                 elif list(payload[3:4])[0] == 1:
                     if bytes(payload[4:]) == cam_mac:

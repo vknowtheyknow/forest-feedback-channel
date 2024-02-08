@@ -189,14 +189,18 @@ class mylora(LoRa):
                         for b in range(3):
                             with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
                                 f.write(f'1_{time.time()}')
-                
+                elif cam_mac_pack == 2:
+                    if bytes(payload[4:]) == cam_mac:
+                        print(f'fine! we re sending')
+                    else:
+                        print('we must wait other to send')
                 elif list(payload[3:4])[0] == 1:
                     if bytes(payload[4:]) == cam_mac:
                         loras[0].feedback = False
                         loras[1].feedback = False
                         loras[2].feedback = False
                     else:
-                        loras[3].lora_tx(cam_mac,1,0)
+                        loras[0].lora_tx(cam_mac,1,0)
                
                 elif loras[0].feedback or loras[1].feedback or loras[2].feedback:
                     if list(payload[2:3])[0] == 0 and list(payload[3:4])[0] == 0:

@@ -200,7 +200,7 @@ class mylora(LoRa):
                         loras[1].feedback = False
                         loras[2].feedback = False
                     else:
-                        loras[0].lora_tx(cam_mac,1,0)
+                        await loras[0].lora_tx(cam_mac,1,0)
                
                 elif loras[0].feedback or loras[1].feedback or loras[2].feedback:
                     if list(payload[2:3])[0] == 0 and list(payload[3:4])[0] == 0:

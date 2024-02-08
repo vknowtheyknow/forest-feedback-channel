@@ -196,7 +196,7 @@ async def my_main():
             print(f'this is file that send unsuccessfully ,amount:{last_seg} which are {seg_list}')
             
         if len(seg_list) == 0:
-            await lora_array.loras[0].lora_tx(b'',0,1)
+            await lora_array.loras[0].lora_tx(cam_mac,0,1)
             os.rmdir(SOURCE_DIR + img_id)
             
     await post_tx_status()

@@ -220,6 +220,7 @@ class mylora(LoRa):
                         f  = open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w")
                         f.write(f"1_{time.time()}")
                         f.close()
+                        #update_wait(b)
                         #ได้ packet มาแล้วถ้ามีไฟล์ x_y ใน exported 
                         pkt_error = not self.rx_is_good()
                         self.clear_irq_flags(RxDone=1,PayloadCrcError=1)
@@ -282,10 +283,20 @@ class mylora(LoRa):
                 
         else:
             while True:
+                '''
+                with open(f'./lora_receiver/rx_buffer/{self.name}', "w") as f:
+                    waitt = f.read()
+                '''
                 while not self.feedback:
                     #print(self.feedback)
                     await asyncio.sleep(0.001)
+                '''    
+                with open(f'./lora_receiver/rx_buffer/{self.name}', "r") as f:
+                    waitt = int(f.read())
+                '''
+                #print(f'waitt...{waitt}')
                 payload = await self.queue_tx.get()
+                #await asyncio.sleep(waitt)
                 await self.lora_tx(payload,0,0)
                 
             '''    
@@ -355,6 +366,29 @@ class mylora(LoRa):
 ###########################################################
 def set_feedback_channel():
     feedback_channel = True
+def update_wait(b):
+    b_active = [1,1,1]
+    b_ltime[b] =[0,0,0]
+    with open(f'./lora_receiver/rx_buffer/Board{b}', "r+") as f:
+        w_time = int(f.read())
+        w_time = w_time-5  if w_time>0 else 0
+        f.seek(0)
+        f.truncate()
+        f.write(str(w_time))
+    for j in range(3):
+        if j!=b:
+            ts = time.time()
+            with open(f'./lora_receiver/rx_buffer/boardstatus/{j}.txt', "r") as f:
+                i = f.read().split("_")
+                b_active[j] = int(i[0])
+                b_ltime[j] = float(i[1])
+            with open(f'./lora_receiver/rx_buffer/Board{j}', "r+") as f:
+                if ts-b_ltime[j]>100:
+                    w_time = int(f.read())
+                    w_time = w_time+5
+                    f.seek(0)
+                    f.truncate()
+                    f.write(str(w_time))
 def to_ascii(n):
     assert(type(n) == str)
     return [ord(c) for c in n]
@@ -421,7 +455,7 @@ def non_active():
                 os.rename(f'./image_buffer/exported/0007/{x}_{y}.jpg',f'./image_buffer/segmented/0007/{x}_{y}.jpg')
     loop.create_task(__main__.my_main())
     #loop.call_soon_threadsafe(loop.stop)
-'''
+
 if __name__=='__main__':
     try:
         lora_setup()
@@ -435,4 +469,4 @@ if __name__=='__main__':
         sys.stdout.flush()
         print("Exit")
         lora_teardown()
-'''
+

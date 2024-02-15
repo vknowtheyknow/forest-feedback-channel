@@ -38,7 +38,7 @@ def payload_prep(file_id, seg_name):
     
     #print(f'x:{x},y:{y}')
     #>x:1,y:0
-    
+    packet_pointer = bytes([1])
     header = bytes([file_id//256, file_id%256, x, y])
     #>b'\x00\n\x01\x00'
     sub_no = 0
@@ -47,22 +47,25 @@ def payload_prep(file_id, seg_name):
         subheader = bytes([sub_no//256, sub_no%256])
         #sub_no=2
         #b'\x00\x02'
-        payload = header + subheader + ori_b[:PACKET_SIZE]
+        payload = packet_pointer+header + subheader + ori_b[:PACKET_SIZE]
         #b'\x00\n\x01\x00\x00\x02'+binary_img
         payload_list.append(payload)
         sub_no += 1
         ori_b = ori_b[PACKET_SIZE:]
+        packet_pointer = bytes([0])
+        if len(ori_b) <= PACKET_SIZE:
+            packet_pointer = bytes([2])
         #print(payload_list)
     #sub_no_{x}_{y} = sub_no-1
     return payload_list
 
 def print_header(payload):
     #payload =b'\x00\n\x01\x00\x00\x02'+binary_img
-    img_id = list(payload[0:2])
+    img_id = list(payload[1:3])
     img_id = img_id[0]*256 + img_id[1]
-    x = int(list(payload[2:3])[0])
-    y = int(list(payload[3:4])[0])
-    sub_no = list(payload[4:6])
+    x = int(list(payload[3:4])[0])
+    y = int(list(payload[4:5])[0])
+    sub_no = list(payload[5:7])
     sub_no = sub_no[0]*256 + sub_no[1]
     print('Sending:', img_id, x, y, sub_no)
     #2| Sending: 10 8 1 20
@@ -158,7 +161,7 @@ async def my_main():
                     i = f.read().split("_")
                     b_active[b] = int(i[0])
                     b_ltime[b] = float(i[1])
-                if ts - b_ltime[b] > 60:
+                if ts - b_ltime[b] > 120:
                     with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
                         f.write(f'0_{b_ltime[b]}')
                     
@@ -171,12 +174,12 @@ async def my_main():
             while seg_ind < last_seg:
                 for b in range(3):
                     print(f'last active is {ts-b_ltime[b]}')
-                    if ts - b_ltime[b] > 100:
+                    if ts - b_ltime[b] > 120:
                         with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
                             f.write(f'0_{b_ltime[b]}')
                             b_active[b]=0
                     
-                    if ts - b_ltime[b] > 180:
+                    if ts - b_ltime[b] > 360:
                         with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
                             f.write(f'1_{ts}')
                             b_active[b]=1
@@ -195,18 +198,26 @@ async def my_main():
                     payload_list_0 = payload_prep(img_id, seg_list[seg_ind])
                     seg_ind +=1
                     w_time0 = w_time0-5 if w_time0>0 else 0
+                    
                 else:
                     w_time0 +=5
                 if b_active[1]==1:
-                    payload_list_1 = payload_prep(img_id, seg_list[seg_ind])
-                    seg_ind +=1
-                    w_time1 = w_time1-5  if w_time1>0 else 0
+                    if seg_ind < last_seg:
+                        payload_list_1 = payload_prep(img_id, seg_list[seg_ind])
+                        seg_ind +=1
+                        w_time1 = w_time1-5  if w_time1>0 else 0
+                    else:
+                        b_active[1]=0
+                    
                 else:
                     w_time1 +=5
                 if b_active[2]==1:
-                    payload_list_2 = payload_prep(img_id, seg_list[seg_ind])
-                    seg_ind +=1
-                    w_time2 = w_time2-5  if w_time2>0 else 0
+                    if seg_ind < last_seg:
+                        payload_list_2 = payload_prep(img_id, seg_list[seg_ind])
+                        seg_ind +=1
+                        w_time2 = w_time2-5  if w_time2>0 else 0
+                    else:
+                        b_active[1]=0
                 else:
                     w_time2 +=5
                 
@@ -228,11 +239,12 @@ async def my_main():
                 )
                 
                 print(f'after gather{time.time()-bg}')
+                '''
                 if b_active[0]==0 and b_active[1]==0 and b_active[2]==0:
                     lora_array.loop.call_soon_threadsafe(lora_array.loop.stop)
                     break
                     
-                
+                '''
                 summit_lora_status(img_id)
                 ts = time.time()
                 for b in range(3):
@@ -250,12 +262,16 @@ async def my_main():
                 payload_enqueue_wrapper(2, payloads2,b_active[2])]
             )
             '''
-            if b_active[0]==0 and b_active[1]==0 and b_active[2]==0:
-                break
+            await asyncio.sleep(30)
             seg_list = os.listdir(SOURCE_DIR + img_id)
             last_seg = len(seg_list)
             print(f'this is file that send unsuccessfully ,amount:{last_seg} which are {seg_list}')
-            
+            '''
+            for i in range(last_seg):
+            if os.path.isdir(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}'):
+                os.rename(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{seg_list[, f'/home/pi/Documents/lora-multi-ch-master/image_buffer/exported/{img_id}/{x}_{y}.jpg')
+                print(f'renamed /home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
+            '''
         if len(seg_list) == 0:
             await asyncio.sleep(10)
             await lora_array.loras[0].lora_tx(cam_mac,0,1)

@@ -224,40 +224,21 @@ class mylora(LoRa):
                         #ได้ packet มาแล้วถ้ามีไฟล์ x_y ใน exported 
                         pkt_error = not self.rx_is_good()
                         self.clear_irq_flags(RxDone=1,PayloadCrcError=1)
-                        '''
+                        
                         if os.path.isdir(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}'):
                             os.rename(f'/home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/lora-multi-ch-master/image_buffer/exported/{img_id}/{x}_{y}.jpg')
                             print(f'renamed /home/pi/Documents/lora-multi-ch-master/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
                         else:
                             print('not found file')
-                        '''
-                        '''
-                        if o_x ==x and o_y ==y:
-                            if b == o_b+1:
-                                o_b=b
-                            else:
-                                print(f'{x_y} is missing')
-                        else:
-                            if o_x == -99:
-                                print(f'first packet')
-                                o_x=x
-                                o_y=y
-                            if os.path.isdir(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}'):
-                                os.rename(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{o_x}_{o_y}.jpg', f'/home/pi/Documents/forest-feedback-channel/image_buffer/exported/{img_id}/{o_x}_{o_y}.jpg')
-                                print(f'renamed /home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{o_x}_{o_y}.jpg')
-                                o_b=0
-                            else:
-                                print('not found file')
-                            o_x=x
-                            o_y=y
-                        '''
                         
+                
+                        '''
                         if os.path.isdir(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}'):
                             os.rename(f'/home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg', f'/home/pi/Documents/forest-feedback-channel/image_buffer/exported/{img_id}/{x}_{y}.jpg')
                             print(f'renamed /home/pi/Documents/forest-feedback-channel/image_buffer/segmented/{img_id}/{x}_{y}.jpg')
                         else:
                             print('not found file')
-                            
+                        '''
                         if pkt_error:
                             print(f'[{self.name}] CRC ERROR (no data written)')
                             print(self.get_irq_flags())

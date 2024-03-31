@@ -15,7 +15,7 @@ import config
 from lora import LoRa
 from board import BaseBoard
 
-
+SOURCE_DIR = './image_buffer/segmented/'
 GENERATED_DATA_PKT_SIZE = config.PACKET_SIZE
 SF = config.SF
 CH0_FREQ = config.CH0_FREQ
@@ -172,8 +172,9 @@ class mylora(LoRa):
                 
                 if cam_mac_pack == 1:
                     print(f'our cam_mac is {list(cam_mac)}')
-                    print(f'cam that rx recieve is is {payload[4:]}')
-                    if bytes(payload[4:]) != cam_mac:
+                    cam_rx = payload[4:]
+                    print(f'cam that rx recieve is is {cam_rx}')
+                    if bytes(cam_rx) != cam_mac:
                         loras[0].feedback = False
                         loras[1].feedback = False
                         loras[2].feedback = False
@@ -194,14 +195,47 @@ class mylora(LoRa):
                         print(f'fine! we re sending')
                     else:
                         print('we must wait other to send')
+                elif cam_mac_pack == 4:
+                    '''
+                    if bytes(payload[4:10]) == cam_mac:
+                        print(f'fine! we re sending')
+                    else:
+                        print('we must wait other to send')
+                    '''
+                    img_id = list(payload[4:6])
+                    img_id = img_id[0]*256 + img_id[1]
+                    print(list(payload[6:]))
+                    if os.path.isdir(f'./image_buffer/exported/{img_id}'):
+                        os.mkdir(f'./image_buffer/segmented/{img_id}')
+                    npart = len(list(payload[6:]))
+                    print(npart)
+                    '''
+                    x = int(list(payload[6:7])[0])
+                    y = int(list(payload[7:8])[0])
+                    print(x,y)
+                    os.rename(f'./image_buffer/exported/{img_id}/{x}_{y}.jpg',f'./image_buffer/segmented/{img_id}/{x}_{y}.jpg')
+                    '''
+                    for i in range(0,npart,2):
+                        x = int(list(payload[6+i:7+i])[0])
+                        y = int(list(payload[7+i:8+i])[0])
+                        print(x,y)
+                        try:
+                            os.rename(f'./image_buffer/exported/{img_id}/{x}_{y}.jpg',f'./image_buffer/segmented/{img_id}/{x}_{y}.jpg')
+                        except:
+                            print(f'not found {x}_{y}')
+                    
+                    
                 elif list(payload[3:4])[0] == 1:
                     if bytes(payload[4:]) == cam_mac:
                         loras[0].feedback = False
                         loras[1].feedback = False
                         loras[2].feedback = False
                     else:
-                        await loras[0].lora_tx(cam_mac,1,0)
-               
+                        img_list = sorted(os.listdir(SOURCE_DIR))
+                        for img_id in img_list:
+                            if not os.path.isdir(f'{SOURCE_DIR}{img_id}'):
+                                continue
+                            await loras[0].lora_tx(cam_mac,1,0)
                 elif loras[0].feedback or loras[1].feedback or loras[2].feedback:
                     if list(payload[2:3])[0] == 0 and list(payload[3:4])[0] == 0:
                         img_id = list(payload[4:6])
@@ -386,7 +420,6 @@ def lora_setup():
 ###########################################################
 loras = []
 feedback_channel = False
-##state=0 means recieving,1 mean tx
 for config in configs:
     board = config['board']
     lora = mylora(config['board'])
@@ -400,11 +433,6 @@ for config in configs:
     lora.set_low_data_rate_optim(True)
     agc_auto_value = lora.get_agc_auto_on()
     print(f"AGC Auto Value: {agc_auto_value}")
-    #assert(agc_auto_value == 1)
- ####addd   
-
-###end add
-    #assert(lora.get_agc_auto_on() == 1)
     loras.append(lora)
 
 async def enqueue():

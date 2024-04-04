@@ -131,9 +131,7 @@ async def my_main():
         b_active = [1,1,1]
         ts = time.time()
         b_ltime = [ts,ts,ts]
-        w_time0 = 0
-        w_time1 = 0
-        w_time2 = 0
+        
         #sp_list = service_packet.generate_packet()
         #print(f'sp_list is {sp_list}')
         #old context
@@ -146,6 +144,10 @@ async def my_main():
             #await payload_enqueue_wrapper(0, cam_mac,1)
             if not os.path.isdir(f'{SOURCE_DIR}{img_id}'):
                 continue
+            seg_list = os.listdir(SOURCE_DIR + img_id)
+            last_seg = len(seg_list)
+            if last_seg ==0:
+                continue
             await lora_array.loras[0].lora_tx(cam_mac,1,0)
             
             '''
@@ -156,12 +158,12 @@ async def my_main():
             
             await asyncio.sleep(5)
             print(img_id)
-            seg_list = os.listdir(SOURCE_DIR + img_id)
+            
             
             #random.shuffle(seg_list)
             if not os.path.isdir(f'{EXPORTED_DIR}{img_id}'):
                 os.mkdir(f'{EXPORTED_DIR}{img_id}')
-            last_seg = len(seg_list)
+            
             #time.start()
             while last_seg>0:
                 ts = time.time()
@@ -170,19 +172,13 @@ async def my_main():
                         i = f.read().split("_")
                         b_active[b] = int(i[0])
                         b_ltime[b] = float(i[1])
-                    if ts - b_ltime[b] > 120:
-                        with open(f'./lora_receiver/rx_buffer/boardstatus/{b}.txt', "w") as f:
-                            f.write(f'0_{b_ltime[b]}')
                         
-                seg_ind = 0
-                ###########why we have
-                seg_list.extend(5*[False])
-                payloads0 = []
-                payloads1 = []
-                payloads2 = []
+               
+                #seg_list.extend(5*[False])
                 payload_list_0 = b''
                 payload_list_1 = b''
                 payload_list_2 = b''
+                seg_ind = 0
                 while seg_ind < last_seg:
                     for b in range(3):
                         print(f'last active is {ts-b_ltime[b]}')
@@ -197,41 +193,24 @@ async def my_main():
                                 b_active[b]=1
                         
                     #print(f'seg_list is {seg_list},1:{seg_list[seg_ind]},2:{seg_list[seg_ind+1]},3:{seg_list[seg_ind+2]}')
-                    if b_active[0]==1:
-                        payload_list_0 = payload_prep(img_id, seg_list[seg_ind])
-                        seg_ind +=1
-                        w_time0 = w_time0-5 if w_time0>0 else 0
-                        
-                    else:
-                        w_time0 +=5
-                    if b_active[1]==1:
-                        if seg_ind < last_seg:
-                            payload_list_1 = payload_prep(img_id, seg_list[seg_ind])
-                            seg_ind +=1
-                            w_time1 = w_time1-5  if w_time1>0 else 0
-                        else:
-                            b_active[1]=0
-                        
-                    else:
-                        w_time1 +=5
-                    if b_active[2]==1:
-                        if seg_ind < last_seg:
-                            payload_list_2 = payload_prep(img_id, seg_list[seg_ind])
-                            seg_ind +=1
-                            w_time2 = w_time2-5  if w_time2>0 else 0
-                        else:
-                            b_active[1]=0
-                    else:
-                        w_time2 +=5
                     
-                    with open(f'./lora_receiver/rx_buffer/Board0', "w") as f:
-                        f.write(f'{w_time0}')
-                    with open(f'./lora_receiver/rx_buffer/Board1', "w") as f:
-                        f.write(f'{w_time1}')
-                    with open(f'./lora_receiver/rx_buffer/Board2', "w") as f:
-                        f.write(f'{w_time2}')
-                                
-                    print(f'w time is{w_time0},{w_time1},{w_time2}')
+                    payload_list_0 = payload_prep(img_id, seg_list[seg_ind])
+                    seg_ind +=1
+                    try:
+                        payload_list_1 = payload_prep(img_id, seg_list[seg_ind])
+                        seg_ind +=1
+                    except:
+                        print(f'not found seglist[{seg_ind}]')
+                        b_active[1]=0
+                    try:
+                        payload_list_2 = payload_prep(img_id, seg_list[seg_ind])
+                        seg_ind +=1
+                    except:
+                        print(f'not found seglist[{seg_ind}]')
+                        b_active[2]=0
+
+                    
+                    
                     bg=time.time()
                     print(f'before gather{bg}')
                     
@@ -242,12 +221,7 @@ async def my_main():
                     )
                     
                     print(f'after gather{time.time()-bg}')
-                    '''
-                    if b_active[0]==0 and b_active[1]==0 and b_active[2]==0:
-                        lora_array.loop.call_soon_threadsafe(lora_array.loop.stop)
-                        break
-                        
-                    '''
+                    
                     summit_lora_status(img_id)
                     ts = time.time()
                     for b in range(3):
@@ -255,17 +229,22 @@ async def my_main():
                             i = f.read().split("_")
                             b_active[b] = int(i[0])
                             b_ltime[b] = float(i[1])
-                await asyncio.sleep(30)
-                seg_list = os.listdir(SOURCE_DIR + img_id)
-                last_seg = len(seg_list)
-                print(f'this is file that send unsuccessfully ,amount:{last_seg} which are {seg_list}')
+                #await asyncio.sleep(30)
+                if seg_ind>=last_seg:
+                    last_seg = 0
+                    break
+                
+            seg_list = os.listdir(SOURCE_DIR + img_id)
+            last_seg = len(seg_list)
+            print(f'this is file that send unsuccessfully ,amount:{last_seg} which are {seg_list}')
+            
             if len(seg_list) == 0:
                 await asyncio.sleep(10)
                 await lora_array.loras[0].lora_tx(cam_mac,0,1)
                 os.rmdir(SOURCE_DIR + img_id)
                 et_img = time.time()
                 print(f'use {(et_img-st_img)//60} minutes to send picture')
-            await asyncio.sleep(40)    
+            
         await post_tx_status()
         await asyncio.sleep(40)  
         print('done')
